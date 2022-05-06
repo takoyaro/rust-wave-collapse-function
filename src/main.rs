@@ -339,7 +339,7 @@ fn main() {
     let mut grid = Grid::new(rows, cols, max_domain);
     let mut duration = start.elapsed();
     grid.init();
-    println!("Grid initialized in: {:?}", duration);
+    println!("{:?} {:?} Grid initialized in: {:?}",rows,cols, duration);
     start = Instant::now();
     grid.start(Some(1));
     duration = start.elapsed();
