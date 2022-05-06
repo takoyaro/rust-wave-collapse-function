@@ -60,26 +60,26 @@ impl Grid {
             let mut rng = rand::thread_rng();
             // let mut random_tile:Tile;
             if id.is_none() {
-                if self.RandomUncollapsedTileIndex().is_none() {
+                if self.random_uncollapsed_tile_index().is_none() {
                     println!("All tiles have been collapsed. We are Done");
                     return;
                 }
                 else{
-                    id = self.RandomUncollapsedTileIndex(); 
+                    id = self.random_uncollapsed_tile_index(); 
                 }
             }
             for index in 0..self.cells.len(){
                 self.cells[index].is_propagated = false;
             }
-            let goodID = id.unwrap(); 
-            self.cells[goodID].collapsed_domain = Some(self.cells[goodID].domain.clone()[rng.gen_range(0..self.cells[goodID].domain.len())]);
-            self.cells[goodID].domain = vec![self.cells[goodID].collapsed_domain.unwrap()];
-            self.cells[goodID].is_propagated = true;
-            self.cells[goodID].is_collapsed = true;
-            let init_neighbors = self.cells[goodID].neighbors.clone();
-            self.propagateAll(init_neighbors);
+            let good_id = id.unwrap(); 
+            self.cells[good_id].collapsed_domain = Some(self.cells[good_id].domain.clone()[rng.gen_range(0..self.cells[good_id].domain.len())]);
+            self.cells[good_id].domain = vec![self.cells[good_id].collapsed_domain.unwrap()];
+            self.cells[good_id].is_propagated = true;
+            self.cells[good_id].is_collapsed = true;
+            let init_neighbors = self.cells[good_id].neighbors.clone();
+            self.propagate_all(init_neighbors);
 
-            let neighbors = self.cells[goodID].neighbors.clone();
+            let neighbors = self.cells[good_id].neighbors.clone();
             let uncollapsed_neighbors:Vec<usize> = neighbors.into_iter().filter(|n| self.cells[*n].is_collapsed==false).collect();
 
             if uncollapsed_neighbors.len() > 0 as usize {
@@ -147,7 +147,7 @@ impl Grid {
 		let neighbors = self.generate_valid_neighbor_for_tile(index);
         let ret = neighbors.clone();
         let neighbor_domains = neighbors.into_iter().map(|n| &self.cells[n as usize].domain);
-        let neighbor_rules:Vec<Vec<i32>> = neighbor_domains.map(|domain| domain.into_iter().map(|x| self.ValidDomainsFromDomain(*x)).flatten().collect()).collect();
+        let neighbor_rules:Vec<Vec<i32>> = neighbor_domains.map(|domain| domain.into_iter().map(|x| self.valid_domains_from_domain(*x)).flatten().collect()).collect();
         let mut x:Vec<i32> = Some(neighbor_rules.into_iter().reduce(|a, b| a.into_iter().filter(|v| b.contains(v)).collect())).unwrap().unwrap();
         x.sort();
         x.dedup();
@@ -161,13 +161,12 @@ impl Grid {
         return ret
     }
 
-    fn propagateAll(&mut self, mut indexes:Vec<usize>){
-        let done:bool = self.isDone();
+    fn propagate_all(&mut self, indexes:Vec<usize>){
+        let done:bool = self.is_done();
         if done{
             return
         }
         else{
-            let copied_indexes = indexes.clone();
             let mut neighbors: Vec<usize> = Vec::new();
             for index in indexes {
                 let neighbor_indexes = self.propagate(index);
@@ -181,27 +180,12 @@ impl Grid {
             neighbors.dedup();
 
             if neighbors.len()>0 {
-                self.propagateAll(neighbors); 
+                self.propagate_all(neighbors); 
             }
         }
     }
 
-    fn CellIsCollapsed(&self, index:usize)->bool{
-        return self.cells[index].is_collapsed;
-    }
-    fn CellIsPropagated(&self, index:usize)->bool{
-        return self.cells[index].is_propagated;
-    }
-    fn RandomCollapsedTileIndex(&self)->usize{
-        let mut indexes:Vec<usize> = Vec::new();
-        for i in 0..self.cells.len(){
-            if self.cells[i].is_collapsed==true{
-                indexes.push(i);
-            }
-        }
-        return indexes[rand::thread_rng().gen_range(0..indexes.len())];
-    }
-    fn RandomUncollapsedTileIndex(&self)->Option<usize>{
+    fn random_uncollapsed_tile_index(&self)->Option<usize>{
         let mut indexes:Vec<usize> = Vec::new();
         for i in 0..self.cells.len(){
             if self.cells[i].is_collapsed==false{
@@ -215,20 +199,21 @@ impl Grid {
             return None;
         }
     }
-    fn ValidDomainsFromDomain(&self, domain:i32)->Vec<i32>{
+    fn valid_domains_from_domain(&self, domain:i32)->Vec<i32>{
         let mut res:Vec<i32> = Vec::new();
-        let minOne = domain-1;
-        if(minOne>=0){
-            res.push(minOne);
+        let min_one = domain-1;
+        if min_one >= 0 {
+            res.push(min_one);
         }
         res.push(domain);
-        let plusOne = domain+1;
-        if(plusOne<=self.max_domains){
-            res.push(plusOne);
+        let plus_one = domain+1;
+        if plus_one <= self.max_domains {
+            res.push(plus_one);
         }
         return res;
     }
-    fn isDone(&self)->bool{
+    
+    fn is_done(&self)->bool{
         for i in 0..self.cells.len(){
             if self.cells[i].is_propagated==false{
                 return false;
@@ -236,6 +221,7 @@ impl Grid {
         }
         return true;
     }
+
     fn print(&self, index:i32){
         println!("===========================START [{}]==================================",index);
         for i in 0..self.rows{
@@ -244,7 +230,7 @@ impl Grid {
             let collapsed_domains:Vec<String> = self.cells.clone().into_iter().filter(|cell| 
                 cell.row == i).map(|cell|
                     format!("{},[{}]",
-                    self.formatDomain(&cell, index),
+                    self.format_domain(&cell, index),
                     cell.domain.into_iter().map(|d| 
                         d.to_string()
                     ).collect::<Vec<String>>().join(",")
@@ -258,9 +244,9 @@ impl Grid {
         println!("============================END [{}]===================================",index);
     }   
 
-    fn formatDomain(&self,cell:&Tile,index:i32)->String{
+    fn format_domain(&self,cell:&Tile,index:i32)->String{
         if cell.id == index{
-            if(cell.collapsed_domain.is_some()){
+            if cell.collapsed_domain.is_some() {
                 return format!("\x1b[93m*{}*\x1b[0m",cell.collapsed_domain.unwrap_or(-1));
             }
             else{
@@ -269,7 +255,7 @@ impl Grid {
             
         }
         else{
-            if(cell.collapsed_domain.is_some()){
+            if cell.collapsed_domain.is_some() {
                 return format!("\x1b[92m{}\x1b[0m",cell.collapsed_domain.unwrap_or(-1));
             }
             else{
@@ -277,22 +263,21 @@ impl Grid {
             }
         }
     }
-    fn printGrid(&self){
+    fn print_grid(&self){
         for i in 0..self.rows{
             let mut chunks = Vec::new();
             for j in 0..self.cols{
                 let index = i*self.cols+j;
-                let domains = self.cells[index as usize].domain.clone();
                 let mut domain:i32 = 9;
-                if(self.cells[index as usize].is_collapsed){
+                if self.cells[index as usize].is_collapsed {
                     domain = self.cells[index as usize].collapsed_domain.unwrap();
                 }
-                chunks.push(self.tileFromDomain(&domain));
+                chunks.push(self.tile_from_domain(&domain));
             }
             println!("{}",chunks.join(""));
         }
     }
-    fn tileFromDomain(&self,domain:&i32)->String{
+    fn tile_from_domain(&self,domain:&i32)->String{
         let mut r = 0;
         let mut g = 0;
         let mut b = 0;
@@ -309,45 +294,19 @@ impl Grid {
 
 }
 
-fn printColorLegend(){
+fn print_color_legend(){
     println!("\x1b[90m{}\x1b[0m | \x1b[96m{}\x1b[0m | \x1b[92m{}\x1b[0m | \x1b[93m{}\x1b[0m","Uncollapsed","Uncollapsed(Propagated here)","Collapsed","Collapsed (Propagated here)");
 }
 
 fn main() {
     //Grid Properties
-    let rows:i32 = 50;
-    let cols:i32 = 50;
+    let rows:i32 = 256;
+    let cols:i32 = 256;
     let max_domain:i32 = 5;
 
     let mut grid = Grid::new(rows, cols, max_domain);
     grid.init();
     grid.start(Some(1));
-    println!("DONE");
-    grid.printGrid();
-    printColorLegend();
-}
-
-
-  
-
-fn get_grid_tiles_with_shortest_domain(grid:&Vec<Tile>) -> Vec<i32>{
-    //map grid tiles to their domains
-    let domains:Vec<Vec<i32>> = grid.iter().filter(|tile| tile.collapsed_domain.is_none()).map(|tile| tile.domain.to_vec()).collect();
-    //get shortest domains
-    let shortest_domains:i32 = domains.iter().map(|domain| domain.len()).min().unwrap_or(99) as i32;
-    //get the index of shortest domains in the grid
-    let shortest_domains_index:Vec<i32> = domains.iter().enumerate().filter(|&(_,domain)| domain.len() as i32 == shortest_domains).map(|(index,_)| index as i32).collect();
-    return shortest_domains_index
-}
-fn collapse_random_tile(grid:&mut Vec<Tile>)->(usize,&mut Tile){
-    let shortest_domains_index = get_grid_tiles_with_shortest_domain(grid);
-    let random_index = rand::thread_rng().gen_range(0..shortest_domains_index.len());
-    let random_tile_index = shortest_domains_index[random_index];
-    let random_tile = &mut grid[random_tile_index as usize];
-    let random_domain_from_available_domains = rand::thread_rng().gen_range(0..random_tile.domain.len());
-    random_tile.collapsed_domain = Some(random_tile.domain[random_domain_from_available_domains]);
-    if random_tile.collapsed_domain.is_none(){
-        panic!("collapsedDomain is None");
-    }
-    return (random_index,random_tile)
+    //grid.print_grid();
+    print_color_legend();
 }
