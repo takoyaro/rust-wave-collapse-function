@@ -335,8 +335,8 @@ fn print_color_legend(){
 
 fn main() {
     //Grid Properties
-    let rows:i32 = 20;
-    let cols:i32 = 20;
+    let rows:i32 = 30;
+    let cols:i32 = 30;
     let max_domain:i32 = 5;
     let mut start = Instant::now();
     let mut grid = Grid::new(rows, cols, max_domain);
