@@ -1,7 +1,7 @@
 use rand::Rng;
 use rayon::prelude::*;
 use std::time::{Duration, Instant};
-
+use std::sync::mpsc::channel;
 
 #[derive(Clone,Debug)]
 struct Tile {
@@ -191,19 +191,22 @@ impl Grid {
             //     let (neighbors,tile) = self.neighbor_propagation(index);
             //     return (self, neighbors,tile);
             // }).collect();
+            let (sender, receiver) = channel();
             let mut test:Vec<(usize,Tile)> = Vec::new();
-            for propagated_neighbor in propagated_neighbors{
+            propagated_neighbors.into_par_iter().for_each_with(sender, | s:&mut std::sync::mpsc::Sender<(Vec<usize>,usize,Tile)>, propagated_neighbor| {
                 let (pneighbors, tile) = propagated_neighbor;
-                
-                for n in pneighbors {
-                    neighbors.push(n)
-                }
-
                 if tile.is_some() {
                     let unwrapped_tile = tile.unwrap();
-                    test.push((unwrapped_tile.id as usize, Tile{id:unwrapped_tile.id, row:unwrapped_tile.row, col:unwrapped_tile.col, neighbors:unwrapped_tile.neighbors.clone(), domain:unwrapped_tile.domain.clone(), collapsed_domain:unwrapped_tile.collapsed_domain, is_propagated:unwrapped_tile.is_propagated, is_collapsed:unwrapped_tile.is_collapsed}));
+                    s.send((pneighbors,unwrapped_tile.id as usize, Tile{id:unwrapped_tile.id, row:unwrapped_tile.row, col:unwrapped_tile.col, neighbors:unwrapped_tile.neighbors.clone(), domain:unwrapped_tile.domain.clone(), collapsed_domain:unwrapped_tile.collapsed_domain, is_propagated:unwrapped_tile.is_propagated, is_collapsed:unwrapped_tile.is_collapsed}));
                 }
-                //self.cells[tile.id as usize] = Tile{id:tile.id, row:tile.row, col:tile.col, neighbors:tile.neighbors.clone(), domain:tile.domain.clone(), collapsed_domain:tile.collapsed_domain, is_propagated:tile.is_propagated, is_collapsed:tile.is_collapsed};
+            });
+            let propagation:Vec<(Vec<usize>,usize,Tile)> = receiver.iter().collect();
+            for propagated_neighbor in propagation{
+                let (pneighbors, id, tile) = propagated_neighbor;
+                for pneighbor in pneighbors{
+                    neighbors.push(pneighbor);
+                }
+                self.cells[id] = Tile{id:tile.id, row:tile.row, col:tile.col, neighbors:tile.neighbors.clone(), domain:tile.domain.clone(), collapsed_domain:tile.collapsed_domain, is_propagated:tile.is_propagated, is_collapsed:tile.is_collapsed};
             }
             for (idx,tile) in test{
                 self.cells[idx] = tile;
@@ -332,8 +335,8 @@ fn print_color_legend(){
 
 fn main() {
     //Grid Properties
-    let rows:i32 = 64;
-    let cols:i32 = 64;
+    let rows:i32 = 20;
+    let cols:i32 = 20;
     let max_domain:i32 = 5;
     let mut start = Instant::now();
     let mut grid = Grid::new(rows, cols, max_domain);
