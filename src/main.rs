@@ -80,20 +80,20 @@ use crate::grid::terrain::Terrain;
 
 fn main() {
     let start:Instant = Instant::now();
-    let size = 10;
+    let size = 9;
 	let rules = vec![vec![0,1],vec![0,1,2],vec![1,2,3],vec![2,3,4],vec![3,4,5],vec![4,5]];
 	let mut t = Terrain::new(3,rules);
     t.init(size);
-	// t.Grid.Print()
 
     let duration = start.elapsed();
     
+	t.grid.print_grid();
     println!("Megagrid generated in {:?}",duration);
     println!("____________________________________________________________________________________");
     
-   (0..100).for_each(|_idx|{
-        let mut t = Terrain::new(3,vec![vec![0,1],vec![0,1,2],vec![1,2,3],vec![2,3,4],vec![3,4,5],vec![4,5]]);
-        t.init(size);
-    });
+//    (0..100).for_each(|_idx|{
+//         let mut t = Terrain::new(3,vec![vec![0,1],vec![0,1,2],vec![1,2,3],vec![2,3,4],vec![3,4,5],vec![4,5]]);
+//         t.init(size);
+//     });
 
 }

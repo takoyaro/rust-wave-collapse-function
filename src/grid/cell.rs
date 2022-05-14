@@ -1,30 +1,30 @@
 use rand::Rng;
 #[derive(Clone,Debug)]
 pub struct Cell {
-    pub ID: usize,
-    pub DOMAIN: Vec<usize>,
-    pub COLLAPSED_DOMAIN: Option<usize>,
-    pub IS_PROPAGATED: bool,
-    pub IS_COLLAPSED:bool
+    pub id: usize,
+    pub domain: Vec<usize>,
+    pub collapsed_domain: Option<usize>,
+    pub is_propagated: bool,
+    pub is_collapsed:bool
 }
 impl Cell{
     pub fn collapse(&mut self){
-        if self.DOMAIN.len() < 1 {
-            println!("Cell {:?} has no domain",self.ID);
+        if self.domain.len() < 1 {
+            println!("Cell {:?} has no domain",self.id);
         }
-        self.IS_COLLAPSED = true;
-        self.IS_PROPAGATED = true;
-        let random_index = rand::thread_rng().gen_range(0..self.DOMAIN.len());
-        self.COLLAPSED_DOMAIN = Some(self.DOMAIN[random_index]);
-        self.DOMAIN = vec![self.COLLAPSED_DOMAIN.unwrap()];
+        self.is_collapsed = true;
+        self.is_propagated = true;
+        let random_index = rand::thread_rng().gen_range(0..self.domain.len());
+        self.collapsed_domain = Some(self.domain[random_index]);
+        self.domain = vec![self.collapsed_domain.unwrap()];
     }
 }
 pub fn new_cell(id:usize,initial_domains:Vec<usize>)->Cell{
     Cell{
-        ID : id,
-        DOMAIN : initial_domains,
-        COLLAPSED_DOMAIN : None,
-        IS_PROPAGATED : false,
-        IS_COLLAPSED : false
+        id : id,
+        domain : initial_domains,
+        collapsed_domain : None,
+        is_propagated : false,
+        is_collapsed : false
     }
 }
