@@ -1,312 +1,99 @@
-use rand::Rng;
-
-#[derive(Clone,Debug)]
-struct Tile {
-    pub id: i32,
-    pub row: i32,
-    pub col: i32,
-    pub neighbors: Vec<usize>,
-    pub domain: Vec<i32>,
-    pub collapsed_domain: Option<i32>,
-    pub is_propagated: bool,
-    pub is_collapsed:bool
+mod grid {
+    pub mod terrain;
+    pub mod grid;
+    pub mod cell;
+    pub mod utils;
 }
-struct Grid {
-    pub cells: Vec<Tile>,
-    pub max_domains: i32,
-    pub initial_domains: Vec<i32>,
-    pub rows: i32,
-    pub cols: i32
-}
+// use rand::Rng;
+use std::time::{Instant};
 
-impl Grid {
-    fn new(rows:i32, cols:i32, max_domains: i32)->Grid {
-        Grid{
-            cells: Vec::new(),
-            rows: rows,
-            cols: cols,
-            max_domains: max_domains,
-            initial_domains: (0..max_domains+1).collect()
-        }
-        
-    }
+use crate::grid::terrain::Terrain;
+// use rayon::prelude::*;
 
-    fn init(&mut self){
-        for i in 0..&self.rows * &self.cols {
-            let row:i32 = i / self.rows;
-            let col:i32 = i % self.cols;
-            let tile = Tile { id: i, row: row, col: col, neighbors: Vec::new(), domain:self.initial_domains.clone(), collapsed_domain: None, is_propagated: false, is_collapsed: false };
-            self.cells.push(tile);
-        }
-        for i in 0..self.rows * self.cols{
-            let rawtile = &self.cells[i as usize];//Tile { row: grid[i as usize].row, col: grid[i as usize].col};
-            let neighbors:Vec<usize> = self.generate_valid_neighbor_for_tile(rawtile.id as usize);
-            self.cells[i as usize].neighbors = neighbors;
-        }
-    }
-    fn all_collapsed(&self) -> bool {
-        for i in 0..self.cells.len(){
-            if self.cells[i].is_collapsed == false{
-                return false;
-            }
-        }
-        return true;
-    }
-    fn start(&mut self,mut id:Option<usize>) {
-        if self.all_collapsed() {
-            return
-        }
-        else{
-            let mut rng = rand::thread_rng();
-            // let mut random_tile:Tile;
-            if id.is_none() {
-                if self.random_uncollapsed_tile_index().is_none() {
-                    println!("All tiles have been collapsed. We are Done");
-                    return;
-                }
-                else{
-                    id = self.random_uncollapsed_tile_index(); 
-                }
-            }
-            for index in 0..self.cells.len(){
-                self.cells[index].is_propagated = false;
-            }
-            let good_id = id.unwrap(); 
-            self.cells[good_id].collapsed_domain = Some(self.cells[good_id].domain.clone()[rng.gen_range(0..self.cells[good_id].domain.len())]);
-            self.cells[good_id].domain = vec![self.cells[good_id].collapsed_domain.unwrap()];
-            self.cells[good_id].is_propagated = true;
-            self.cells[good_id].is_collapsed = true;
-            let init_neighbors = self.cells[good_id].neighbors.clone();
-            self.propagate_all(init_neighbors);
+// extern crate array_tool;
 
-            let neighbors = self.cells[good_id].neighbors.clone();
-            let uncollapsed_neighbors:Vec<usize> = neighbors.into_iter().filter(|n| self.cells[*n].is_collapsed==false).collect();
 
-            if uncollapsed_neighbors.len() > 0 as usize {
-                let random_neighbor = uncollapsed_neighbors[rng.gen_range(0..uncollapsed_neighbors.len())];
-                self.start(Some(random_neighbor));
-            } else {
-                self.start(None);
-            } 
-        }
-    }
-    
-    fn get_rowcol_from_id(&self, id:i32) -> (i32,i32){
-        let row:i32 = id/self.rows;
-        let col:i32 = id % self.cols;
-        return (row,col);
-    }
-    
-    fn is_valid_row_col(&self, id:i32) -> bool{
-        let rowcol = self.get_rowcol_from_id(id);
-        if rowcol.0 < 0 || rowcol.0 >= self.rows {
-            return false;
-        }
-        if rowcol.1 < 0 || rowcol.1 >= self.cols {
-            return false;
-        }
-        return true;
-    }
-    
-    fn is_valid_neighbor(&self, neighbor_id:i32,tile_id:i32,row_modifier:i32,col_modifier:i32) -> bool{
-        let source_tile = &self.cells[tile_id as usize];
-        if self.get_rowcol_from_id(neighbor_id).0 == source_tile.row+row_modifier && self.get_rowcol_from_id(neighbor_id).1 == source_tile.col+col_modifier && self.is_valid_row_col(neighbor_id){
-           return true
-        }
-        return false;
-    }
-    
-    fn generate_valid_neighbor_for_tile(&self,id:usize) -> Vec<usize>{
-        let mut neighbors:Vec<usize> = Vec::new();
-        let id32 = id as i32;
-        let top_index =  id32 - self.cols;
-        let right_index = id32 + 1;
-        let bottom_index = id32 + self.cols;
-        let left_index = id32 - 1;
-        if self.is_valid_neighbor(top_index, id32, -1, 0) {
-            neighbors.push(top_index as usize);
-        }
-        if self.is_valid_neighbor(right_index, id32, 0, 1) {
-            neighbors.push(right_index as usize);
-        }
-        if self.is_valid_neighbor(bottom_index, id32, 1, 0) {
-            neighbors.push(bottom_index as usize);
-        }
-        if self.is_valid_neighbor(left_index, id32, 0, -1) {
-            neighbors.push(left_index as usize);
-        }
-        return neighbors;
-    } 
+// fn gen_uni_grid(width:usize,height:usize,padding:usize,max_domains:usize)->Grid{
+//     let mut grid = Grid::new(height,1,max_domains);
+//     grid.init();
+//     grid.start(Some(0));
+//     let cols_idxs:Vec<usize> = (0..width).collect();
+//     cols_idxs.into_iter().for_each(|_idx|{
+//         if grid.cols < width{
+//             grid.append_to_grid_cols(1,padding);
+//         }
+//         else{
+//             return;
+//         }
+//     });
+//     return grid
+//     //println!("{:?}",grid.max_domains);
+// }
 
-    fn propagate(&mut self, index:usize)->Vec<usize> {
-        let tile = &self.cells[index];
+// fn gen_fib_grid(size:usize,padding:usize,max_domains:usize)->Grid{
+//     let mut grid = Grid::new(1,1,max_domains);
+//     grid.init();
+//     grid.start(Some(0));
+//     (0..size).for_each(|_idx|{
+//         if grid.cols < size{
+//             grid.append_fib_surrounding();
+//         }
+//         else{
+//             return;
+//         }
+//     });
+//     return grid;
+// }
 
-        if tile.is_collapsed || tile.is_propagated {
-            return [].to_vec();
-        }
-		let neighbors = self.generate_valid_neighbor_for_tile(index);
-        let ret = neighbors.clone();
-        let neighbor_domains = neighbors.into_iter().map(|n| &self.cells[n as usize].domain);
-        let neighbor_rules:Vec<Vec<i32>> = neighbor_domains.map(|domain| domain.into_iter().map(|x| self.valid_domains_from_domain(*x)).flatten().collect()).collect();
-        let mut x:Vec<i32> = Some(neighbor_rules.into_iter().reduce(|a, b| a.into_iter().filter(|v| b.contains(v)).collect())).unwrap().unwrap();
-        x.sort();
-        x.dedup();
-        let res:Vec<i32> = x.into_iter().filter(|x| x >= &(0) && x <= &self.max_domains).map(|n| n).collect();
-        if res.len() < 1 {
-            println!("possible domains ended up empty for index {:?}", tile.id);
-            panic!("PANIC!!!");
-        }
-        self.cells[index] = Tile { id: tile.id, row: tile.row, col: tile.col, neighbors: tile.neighbors.clone(), domain: res, collapsed_domain: tile.collapsed_domain, is_propagated: true, is_collapsed:tile.is_collapsed };
-        // thread::sleep_ms(1000);
-        return ret
-    }
+// fn generate_valid_neighbor_for_tile(cols:usize,rows:usize,total_len:usize,id:usize) -> Vec<usize>{
+//     let mut neighbors:Vec<usize> = Vec::new();
 
-    fn propagate_all(&mut self, indexes:Vec<usize>){
-        let done:bool = self.is_done();
-        if done{
-            return
-        }
-        else{
-            let mut neighbors: Vec<usize> = Vec::new();
-            for index in indexes {
-                let neighbor_indexes = self.propagate(index);
-                for neighbor_index in neighbor_indexes {
-                    if self.cells[neighbor_index].is_propagated == false {
-                        neighbors.push(neighbor_index as usize);
-                    };
-                };
-            }
-            neighbors.sort();
-            neighbors.dedup();
+//     let top_index =  id.checked_sub(cols);
+//     let right_index = id.checked_add(1);
+//     let bottom_index = id.checked_add(cols);
+//     let left_index = id.checked_sub(1);
+//     let r = 0..total_len;
+//     if top_index.is_some(){
+//         if r.contains(&top_index.unwrap()) {
+//             neighbors.push(top_index.unwrap());
+//         }
+//     }
+//     if right_index.is_some(){
+//         if r.contains(&right_index.unwrap()) {
+//             neighbors.push(right_index.unwrap());
+//         }
+//     }
+//     if bottom_index.is_some(){
+//         if r.contains(&bottom_index.unwrap()) {
+//             neighbors.push(bottom_index.unwrap());
+//         }
+//     }
+//     if left_index.is_some(){
+//         if r.contains(&left_index.unwrap()) {
+//             neighbors.push(left_index.unwrap());
+//         }
+//     }
+//     return neighbors;
+// }
 
-            if neighbors.len()>0 {
-                self.propagate_all(neighbors); 
-            }
-        }
-    }
 
-    fn random_uncollapsed_tile_index(&self)->Option<usize>{
-        let mut indexes:Vec<usize> = Vec::new();
-        for i in 0..self.cells.len(){
-            if self.cells[i].is_collapsed==false{
-                indexes.push(i);
-            }
-        } 
-        if indexes.len() > 0 {
-            return Some(indexes[rand::thread_rng().gen_range(0..indexes.len())]);
-        }
-        else{
-            return None;
-        }
-    }
-    fn valid_domains_from_domain(&self, domain:i32)->Vec<i32>{
-        let mut res:Vec<i32> = Vec::new();
-        let min_one = domain-1;
-        if min_one >= 0 {
-            res.push(min_one);
-        }
-        res.push(domain);
-        let plus_one = domain+1;
-        if plus_one <= self.max_domains {
-            res.push(plus_one);
-        }
-        return res;
-    }
-    
-    fn is_done(&self)->bool{
-        for i in 0..self.cells.len(){
-            if self.cells[i].is_propagated==false{
-                return false;
-            }
-        }
-        return true;
-    }
-
-    fn print(&self, index:i32){
-        println!("===========================START [{}]==================================",index);
-        for i in 0..self.rows{
-            
-            //get columns collapsed_domains
-            let collapsed_domains:Vec<String> = self.cells.clone().into_iter().filter(|cell| 
-                cell.row == i).map(|cell|
-                    format!("{},[{}]",
-                    self.format_domain(&cell, index),
-                    cell.domain.into_iter().map(|d| 
-                        d.to_string()
-                    ).collect::<Vec<String>>().join(",")
-                )
-            ).collect();
-            //concatenated domains as string
-            let concatenated_domains:String = collapsed_domains.into_iter().map(|x| x.to_string()).collect::<Vec<String>>().join("|");
-            println!("{}", concatenated_domains);
-            println!("--------------------------------------------------------------");
-        }
-        println!("============================END [{}]===================================",index);
-    }   
-
-    fn format_domain(&self,cell:&Tile,index:i32)->String{
-        if cell.id == index{
-            if cell.collapsed_domain.is_some() {
-                return format!("\x1b[93m*{}*\x1b[0m",cell.collapsed_domain.unwrap_or(-1));
-            }
-            else{
-                return format!("\x1b[96m*{}*\x1b[0m",cell.collapsed_domain.unwrap_or(-1));
-            }
-            
-        }
-        else{
-            if cell.collapsed_domain.is_some() {
-                return format!("\x1b[92m{}\x1b[0m",cell.collapsed_domain.unwrap_or(-1));
-            }
-            else{
-                return format!("\x1b[90m{}\x1b[0m",cell.collapsed_domain.unwrap_or(-1));
-            }
-        }
-    }
-    fn print_grid(&self){
-        for i in 0..self.rows{
-            let mut chunks = Vec::new();
-            for j in 0..self.cols{
-                let index = i*self.cols+j;
-                let mut domain:i32 = 9;
-                if self.cells[index as usize].is_collapsed {
-                    domain = self.cells[index as usize].collapsed_domain.unwrap();
-                }
-                chunks.push(self.tile_from_domain(&domain));
-            }
-            println!("{}",chunks.join(""));
-        }
-    }
-    fn tile_from_domain(&self,domain:&i32)->String{
-        let mut r = 0;
-        let mut g = 0;
-        let mut b = 0;
-        if domain==&0 {r=112;g=181;b=255;}
-        else if domain==&1 {r=255;g=205;b=112;}
-        else if domain==&2 {r=93;g=184;b=79;}
-        else if domain==&3 {r=57;g=105;b=49;}
-        else if domain==&4 {r=84;g=59;b=19;}
-        else if domain==&5 {r=43;g=41;b=36;}
-        else if domain==&6 {r=255;g=255;b=255;}
-        else if domain==&-1 {r=0;g=0;b=0;}
-        return format!("\x1b[48;2;{};{};{}m{:?}\x1b[0m",r,g,b,domain);
-    }
-
-}
-
-fn print_color_legend(){
-    println!("\x1b[90m{}\x1b[0m | \x1b[96m{}\x1b[0m | \x1b[92m{}\x1b[0m | \x1b[93m{}\x1b[0m","Uncollapsed","Uncollapsed(Propagated here)","Collapsed","Collapsed (Propagated here)");
-}
 
 fn main() {
-    //Grid Properties
-    let rows:i32 = 256;
-    let cols:i32 = 256;
-    let max_domain:i32 = 5;
+    let start:Instant = Instant::now();
+    let size = 9;
+	let rules = vec![vec![0,1],vec![0,1,2],vec![1,2,3],vec![2,3,4],vec![3,4,5],vec![4,5]];
+	let mut t = Terrain::new(3,rules);
+    t.init(size);
 
-    let mut grid = Grid::new(rows, cols, max_domain);
-    grid.init();
-    grid.start(Some(1));
-    //grid.print_grid();
-    print_color_legend();
+    let duration = start.elapsed();
+    
+	t.grid.print_grid();
+    println!("Megagrid generated in {:?}",duration);
+    println!("____________________________________________________________________________________");
+    
+//    (0..100).for_each(|_idx|{
+//         let mut t = Terrain::new(3,vec![vec![0,1],vec![0,1,2],vec![1,2,3],vec![2,3,4],vec![3,4,5],vec![4,5]]);
+//         t.init(size);
+//     });
+
 }
