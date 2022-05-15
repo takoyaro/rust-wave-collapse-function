@@ -234,8 +234,10 @@ impl Grid {
         else if domain==&3 {r=57;g=105;b=49;}
         else if domain==&4 {r=84;g=59;b=19;}
         else if domain==&5 {r=43;g=41;b=36;}
-        else if domain==&6 {r=255;g=255;b=255;}
-        else if domain==&9 {r=0;g=0;b=0;}
+        else if domain==&6 {r=34;g=71;b=21;}
+        else if domain==&7 {r=74;g=54;b=50;}
+        else if domain==&8 {r=81;g=109;b=153;}
+        else if domain==&9 {r=204;g=218;b=240;}
         if domain ==&9 {
             return format!("\x1b[48;2;{};{};{}m{:?}\x1b[0m",r,g,b,"_");
         }
